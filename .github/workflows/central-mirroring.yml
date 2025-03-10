@@ -12,8 +12,24 @@ jobs:
       - name: Read Repository List
         id: read_repos
         run: |
-          REPO_LIST=$(cat repositories.txt) # Read from repositories.txt
-          echo "REPO_LIST=$REPO_LIST" >> $GITHUB_ENV
+          # Read repositories line by line to avoid format issues
+          while IFS= read -r repo || [ -n "$repo" ]; do
+            # Skip empty lines and comments
+            if [[ -n "$repo" && ! "$repo" =~ ^# ]]; then
+              echo "Processing: $repo"
+              echo "$repo" >> $GITHUB_ENV_LIST
+            fi
+          done < repositories.txt
+
+          # Set as multiline environment variable
+          echo "REPO_LIST<<EOF" >> $GITHUB_ENV
+          cat $GITHUB_ENV_LIST >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          # No longer need this line since REPO_LIST is now set as a multiline variable
+          # echo "REPO_LIST=$REPO_LIST" >> $GITHUB_ENV
+          # Debug output
+          echo "Repositories to be processed:"
+          cat $GITHUB_ENV_LIST
       - name: Set up Git
         run: >
           git config --global user.name "Central Mirror Bot"
@@ -80,6 +96,3 @@ jobs:
       CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
     permissions:
       contents: write
-      actions: read
-      repository-projects: read
-      packages: read
