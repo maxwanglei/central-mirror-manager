@@ -1,4 +1,3 @@
----
 name: Centralized Repository Mirroring
 on:
   schedule:
@@ -14,9 +13,7 @@ jobs:
         id: read_repos
         run: |
           REPO_LIST=$(cat repositories.txt) # Read from repositories.txt
-          echo "REPO_LIST<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$REPO_LIST" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "REPO_LIST=$REPO_LIST" >> $GITHUB_ENV
       - name: Set up Git
         run: >
           git config --global user.name "Central Mirror Bot"
@@ -27,8 +24,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: >
-            const repoList =
-            context.steps.read_repos.outputs.REPO_LIST.trim().split('\n');
+            const repoList = process.env.REPO_LIST.trim().split('\n');
 
             const centralAccount = context.repo.owner; // Central account/org from workflow context
 
@@ -51,7 +47,7 @@ jobs:
                       await github.rest.repos.createInOrg({
                         org: centralAccount,
                         name: targetRepoName,
-                        private: true, // Or false if you want public mirrors
+                        private: false, // Set to false for public mirrors
                         auto_init: false // Important: Don't auto-init to avoid conflicting history later
                       });
                     } else {
