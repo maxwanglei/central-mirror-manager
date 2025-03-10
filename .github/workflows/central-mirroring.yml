@@ -1,10 +1,90 @@
 ---
-name: Minimal Test
+name: Centralized Repository Mirroring
 on:
+  schedule:
+    - cron: 0 * * * *
   workflow_dispatch: null
 jobs:
-  minimal_job:
+  mirror_repositories:
     runs-on: ubuntu-latest
     steps:
-      - name: Simple echo
-        run: echo "This is a minimal test workflow"
+      - name: Checkout Central Repo (for config file)
+        uses: actions/checkout@v4
+      - name: Read Repository List
+        id: read_repos
+        run: |
+          REPO_LIST=$(cat repositories.txt) # Read from repositories.txt
+          echo "REPO_LIST<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$REPO_LIST" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Set up Git
+        run: >
+          git config --global user.name "Central Mirror Bot"
+
+          git config --global user.email "mirror-bot@example.com" # Use a relevant bot email
+      - name: Mirror Each Repository
+        id: mirror_loop
+        uses: actions/github-script@v7
+        with:
+          script: >
+            const repoList =
+            context.steps.read_repos.outputs.REPO_LIST.trim().split('\n');
+
+            const centralAccount = context.repo.owner; // Central account/org from workflow context
+
+            const centralAccountPat = process.env.CENTRAL_ACCOUNT_PAT;
+
+
+            for (const sourceRepo of repoList) {
+              const targetRepoName = sourceRepo.split('/')[1]; // Extract repo name from "owner/repo"
+              const targetRepoFullName = `${centralAccount}/${targetRepoName}`; // Central Account + Repo Name
+              const targetRepoUrl = `https://${centralAccountPat}@github.com/${targetRepoFullName}.git`;
+
+              console.log(`Mirroring ${sourceRepo} to ${targetRepoFullName}`);
+
+              try {
+                // Create target repo if it doesn't exist (optional - remove if you pre-create target repos)
+                await github.rest.repos.get({ owner: centralAccount, repo: targetRepoName })
+                  .catch(async (error) => {
+                    if (error.status === 404) {
+                      console.log(`Target repository ${targetRepoFullName} does not exist, creating...`);
+                      await github.rest.repos.createInOrg({
+                        org: centralAccount,
+                        name: targetRepoName,
+                        private: true, // Or false if you want public mirrors
+                        auto_init: false // Important: Don't auto-init to avoid conflicting history later
+                      });
+                    } else {
+                      throw error; // Re-throw other errors
+                    }
+                  });
+
+
+                // Mirror using git push --mirror (clone bare, push)
+                const tempDir = `mirror-temp-${targetRepoName}`;
+                await fs.promises.mkdir(tempDir, { recursive: true });
+                await exec.exec('git', ['clone', '--bare', `https://github.com/${sourceRepo}.git`, tempDir]);
+                await exec.exec('git', ['remote', 'add', 'target', targetRepoUrl], { cwd: tempDir });
+                await exec.exec('git', ['push', '--mirror', 'target'], { cwd: tempDir });
+                await fs.promises.rm(tempDir, { recursive: true, force: true }); // Cleanup temp dir
+
+                console.log(`Successfully mirrored ${sourceRepo} to ${targetRepoFullName}`);
+
+              } catch (error) {
+                console.error(`Error mirroring ${sourceRepo} to ${targetRepoFullName}:`, error);
+                // Consider adding error reporting/logging mechanisms here (e.g., sending notifications)
+              }
+            }
+
+
+            require('child_process').execSync('rm -rf mirror-temp-*'); // Ensure cleanup even if script crashes
+
+            process.stdout.write('Mirroring process completed.\n');
+        env:
+          CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
+        permissions:
+          contents: write
+          actions: read
+          repository-projects: read
+          packages: read
+          workflows: write
