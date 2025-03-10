@@ -1,2 +1,2 @@
-monarch-initiative/mondo
+labli-lab/drugcombo-data
 fengsh27/tabular-data
