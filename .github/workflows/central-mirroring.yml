@@ -87,4 +87,3 @@ jobs:
       actions: read
       repository-projects: read
       packages: read
-      workflows: write
