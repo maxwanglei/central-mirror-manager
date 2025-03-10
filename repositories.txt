@@ -1,2 +1,2 @@
-labli-lab/drugcombo-data
+langli-lab/drugcombo-data
 fengsh27/tabular-data
