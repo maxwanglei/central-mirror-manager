@@ -65,12 +65,23 @@ jobs:
                   .catch(async (error) => {
                     if (error.status === 404) {
                       console.log(`Target repository ${targetRepoFullName} does not exist, creating...`);
-                      await github.rest.repos.createInOrg({
-                        org: centralAccount,
-                        name: targetRepoName,
-                        private: false, // Set to false for public mirrors
-                        auto_init: false // Important: Don't auto-init to avoid conflicting history later
-                      });
+                      try {
+                        // Try creating as organization repo first
+                        await github.rest.repos.createInOrg({
+                          org: centralAccount,
+                          name: targetRepoName,
+                          private: false,
+                          auto_init: false
+                        });
+                      } catch (orgError) {
+                        console.log(`Creating as organization repo failed, trying user account method...`);
+                        // If that fails, try creating as user repo
+                        await github.rest.repos.createForAuthenticatedUser({
+                          name: targetRepoName,
+                          private: false,
+                          auto_init: false
+                        });
+                      }
                     } else {
                       throw error; // Re-throw other errors
                     }
