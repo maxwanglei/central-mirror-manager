@@ -9,6 +9,11 @@ jobs:
     steps:
       - name: Checkout Central Repo (for config file)
         uses: actions/checkout@v4
+      - name: Debug PAT environment variable
+        run: |
+         echo "CENTRAL_ACCOUNT_PAT length: ${#CENTRAL_ACCOUNT_PAT}"
+        env:
+          CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
       - name: Read Repository List
         id: read_repos
         run: |
@@ -44,6 +49,7 @@ jobs:
         id: mirror_loop
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: >
             const repoList = process.env.REPO_LIST.trim().split('\n');
 
