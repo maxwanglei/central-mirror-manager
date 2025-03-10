@@ -91,7 +91,7 @@ jobs:
                 await require('child_process').execSync(`mkdir -p ${tempDir}`);
                 await require('child_process').execSync(`git clone --mirror https://github.com/${sourceRepo}.git ${tempDir}`);
                 await require('child_process').execSync(`cd ${tempDir} && git remote add target ${targetRepoUrl}`);
-                await require('child_process').execSync(`cd ${tempDir} && git push --mirror target`);
+                await require('child_process').execSync(`cd ${tempDir} && git push target refs/heads/*:refs/heads/* refs/tags/*:refs/tags/*`);
                 await require('child_process').execSync(`rm -rf ${tempDir}`);
       
                 console.log(`Successfully mirrored ${sourceRepo} to ${targetRepoFullName}`);
