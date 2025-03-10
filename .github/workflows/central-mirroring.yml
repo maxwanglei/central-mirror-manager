@@ -12,24 +12,29 @@ jobs:
       - name: Read Repository List
         id: read_repos
         run: |
+          # Create temporary file for list
+          TEMP_FILE=$(mktemp)
+          
           # Read repositories line by line to avoid format issues
           while IFS= read -r repo || [ -n "$repo" ]; do
             # Skip empty lines and comments
             if [[ -n "$repo" && ! "$repo" =~ ^# ]]; then
               echo "Processing: $repo"
-              echo "$repo" >> $GITHUB_ENV_LIST
+              echo "$repo" >> $TEMP_FILE
             fi
           done < repositories.txt
-
+          
           # Set as multiline environment variable
           echo "REPO_LIST<<EOF" >> $GITHUB_ENV
-          cat $GITHUB_ENV_LIST >> $GITHUB_ENV
+          cat $TEMP_FILE >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          # No longer need this line since REPO_LIST is now set as a multiline variable
-          # echo "REPO_LIST=$REPO_LIST" >> $GITHUB_ENV
+          
           # Debug output
           echo "Repositories to be processed:"
-          cat $GITHUB_ENV_LIST
+          cat $TEMP_FILE
+          
+          # Clean up
+          rm $TEMP_FILE
       - name: Set up Git
         run: >
           git config --global user.name "Central Mirror Bot"
