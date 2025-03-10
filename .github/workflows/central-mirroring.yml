@@ -81,9 +81,9 @@ jobs:
         env:
           CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
         permissions:
-          contents: write # Required for creating repos and pushing code
-          actions: read # Required for using github-script (implicit but good to be explicit)
-          repository-projects: read # If you need to access projects
-          packages: read # If you need to access packages
-          workflows: write # To run workflows (if self triggering is needed)
+          contents: write
+          actions: read
+          repository-projects: read
+          packages: read
+          workflows: write
           # Add any other permissions your script needs
