@@ -49,70 +49,57 @@ jobs:
         id: mirror_loop
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
-          script: >
+          github-token: ${{ secrets.CENTRAL_ACCOUNT_PAT }}  # Changed to use your PAT
+          script: |
+            const fs = require('fs');
+            const { exec } = require('@actions/exec');
+            
             const repoList = process.env.REPO_LIST.trim().split('\n');
-
-            const centralAccount = context.repo.owner; // Central account/org from workflow context
-
+            const centralAccount = context.repo.owner; 
             const centralAccountPat = process.env.CENTRAL_ACCOUNT_PAT;
-
-
+      
             for (const sourceRepo of repoList) {
-              const targetRepoName = sourceRepo.split('/')[1]; // Extract repo name from "owner/repo"
-              const targetRepoFullName = `${centralAccount}/${targetRepoName}`; // Central Account + Repo Name
+              const targetRepoName = sourceRepo.split('/')[1]; 
+              const targetRepoFullName = `${centralAccount}/${targetRepoName}`;
               const targetRepoUrl = `https://${centralAccountPat}@github.com/${targetRepoFullName}.git`;
-
+      
               console.log(`Mirroring ${sourceRepo} to ${targetRepoFullName}`);
-
+      
               try {
-                // Create target repo if it doesn't exist (optional - remove if you pre-create target repos)
+                // Create target repo if it doesn't exist
                 await github.rest.repos.get({ owner: centralAccount, repo: targetRepoName })
                   .catch(async (error) => {
                     if (error.status === 404) {
                       console.log(`Target repository ${targetRepoFullName} does not exist, creating...`);
                       try {
-                        // Try creating as organization repo first
-                        await github.rest.repos.createInOrg({
-                          org: centralAccount,
-                          name: targetRepoName,
-                          private: false,
-                          auto_init: false
-                        });
-                      } catch (orgError) {
-                        console.log(`Creating as organization repo failed, trying user account method...`);
-                        // If that fails, try creating as user repo
                         await github.rest.repos.createForAuthenticatedUser({
                           name: targetRepoName,
                           private: false,
                           auto_init: false
                         });
+                      } catch (createError) {
+                        console.error(`Error creating repository: ${createError}`);
+                        throw createError;
                       }
                     } else {
-                      throw error; // Re-throw other errors
+                      throw error;
                     }
                   });
-
-
-                // Mirror using git push --mirror (clone bare, push)
+      
+                // Mirror using shell commands instead of fs/exec
                 const tempDir = `mirror-temp-${targetRepoName}`;
-                await fs.promises.mkdir(tempDir, { recursive: true });
-                await exec.exec('git', ['clone', '--bare', `https://github.com/${sourceRepo}.git`, tempDir]);
-                await exec.exec('git', ['remote', 'add', 'target', targetRepoUrl], { cwd: tempDir });
-                await exec.exec('git', ['push', '--mirror', 'target'], { cwd: tempDir });
-                await fs.promises.rm(tempDir, { recursive: true, force: true }); // Cleanup temp dir
-
+                await require('child_process').execSync(`mkdir -p ${tempDir}`);
+                await require('child_process').execSync(`git clone --bare https://github.com/${sourceRepo}.git ${tempDir}`);
+                await require('child_process').execSync(`cd ${tempDir} && git remote add target ${targetRepoUrl}`);
+                await require('child_process').execSync(`cd ${tempDir} && git push --mirror target`);
+                await require('child_process').execSync(`rm -rf ${tempDir}`);
+      
                 console.log(`Successfully mirrored ${sourceRepo} to ${targetRepoFullName}`);
-
               } catch (error) {
                 console.error(`Error mirroring ${sourceRepo} to ${targetRepoFullName}:`, error);
-                // Consider adding error reporting/logging mechanisms here (e.g., sending notifications)
               }
             }
-
-
-            require('child_process').execSync('rm -rf mirror-temp-*'); // Ensure cleanup even if script crashes
-
+            
             process.stdout.write('Mirroring process completed.\n');
     env:
       CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
