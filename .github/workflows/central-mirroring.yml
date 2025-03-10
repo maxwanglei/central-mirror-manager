@@ -80,11 +80,11 @@ jobs:
             require('child_process').execSync('rm -rf mirror-temp-*'); // Ensure cleanup even if script crashes
 
             process.stdout.write('Mirroring process completed.\n');
-        env:
-          CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
-        permissions:
-          contents: write
-          actions: read
-          repository-projects: read
-          packages: read
-          workflows: write
+      env:
+        CENTRAL_ACCOUNT_PAT: ${{ secrets.CENTRAL_ACCOUNT_PAT }}
+      permissions:
+        contents: write
+        actions: read
+        repository-projects: read
+        packages: read
+        workflows: write
