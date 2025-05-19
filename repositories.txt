@@ -1,3 +1,1 @@
-langli-lab/drugcombo-data
-fengsh27/tabular-data
-langli-lab/mprint-kp-data
+tidyverse/stringr
