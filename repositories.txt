@@ -1,1 +1,2 @@
-tidyverse/stringr
+langli-lab/copper
+langli-lab/mprint-kp-data
