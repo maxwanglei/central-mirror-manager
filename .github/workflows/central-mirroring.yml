@@ -92,43 +92,63 @@ jobs:
                 // Mirror using shell commands
                 const tempDir = `mirror-temp-${targetRepoName}`;
                 
-                // Clone with mirror mode
-                execSync(`mkdir -p ${tempDir}`);
-                execSync(`git clone --mirror https://github.com/${sourceRepo}.git ${tempDir}`);
-                
-                // Check if repository uses LFS by looking for . gitattributes with LFS tracking
-                let usesLfs = false;
                 try {
-                  // Check if .gitattributes exists and contains LFS filter
-                  const gitAttrsCheck = execSync(
-                    `cd ${tempDir} && git cat-file -e HEAD:. gitattributes 2>/dev/null && git show HEAD:. gitattributes | grep -q "filter=lfs" && echo "yes" || echo "no"`,
-                    { encoding: 'utf-8' }
-                  ).trim();
-                  usesLfs = (gitAttrsCheck === 'yes');
-                } catch (e) {
-                  // . gitattributes doesn't exist or no LFS entries
-                  usesLfs = false;
+                  // Clone with mirror mode using authenticated URL
+                  execSync(`mkdir -p ${tempDir}`);
+                  execSync(`git clone --mirror https://${centralAccountPat}@github.com/${sourceRepo}.git ${tempDir}`);
+                  
+                  // Check if repository uses LFS by looking for . gitattributes with LFS tracking
+                  let usesLfs = false;
+                  try {
+                    // First check if .gitattributes exists
+                    execSync(
+                      `cd ${tempDir} && git cat-file -e HEAD:. gitattributes`,
+                      { encoding: 'utf-8', stdio: 'pipe' }
+                    );
+                    
+                    // Then read its content and check for LFS filter
+                    const gitAttrsContent = execSync(
+                      `cd ${tempDir} && git show HEAD:. gitattributes`,
+                      { encoding: 'utf-8' }
+                    );
+                    
+                    usesLfs = gitAttrsContent.includes('filter=lfs');
+                  } catch (e) {
+                    // . gitattributes doesn't exist or can't be read
+                    usesLfs = false;
+                  }
+                  
+                  console.log(`Repository ${sourceRepo} uses LFS: ${usesLfs}`);
+                  
+                  // Fetch LFS objects only if repo uses LFS
+                  if (usesLfs) {
+                    try {
+                      console.log(`Fetching LFS objects for ${sourceRepo}...`);
+                      execSync(`cd ${tempDir} && git lfs fetch --all https://${centralAccountPat}@github.com/${sourceRepo}.git`, { stdio: 'inherit' });
+                    } catch (lfsError) {
+                      console.error(`Warning: Failed to fetch LFS objects: ${lfsError.message}`);
+                      // Continue with mirror even if LFS fetch fails
+                    }
+                  }
+                  
+                  // Add target remote and push with mirror mode
+                  execSync(`cd ${tempDir} && git remote add target ${targetRepoUrl}`);
+                  execSync(`cd ${tempDir} && git push target --mirror`);
+                  
+                  // Push LFS objects only if repo uses LFS
+                  if (usesLfs) {
+                    try {
+                      console. log(`Pushing LFS objects to ${targetRepoFullName}...`);
+                      execSync(`cd ${tempDir} && git lfs push --all ${targetRepoUrl}`, { stdio: 'inherit' });
+                    } catch (lfsError) {
+                      console.error(`Warning: Failed to push LFS objects: ${lfsError.message}`);
+                      // Continue even if LFS push fails
+                    }
+                  }
+                } finally {
+                  // Always cleanup temp directory
+                  execSync(`rm -rf ${tempDir}`);
                 }
-                
-                console.log(`Repository ${sourceRepo} uses LFS: ${usesLfs}`);
-                
-                // Fetch LFS objects only if repo uses LFS
-                if (usesLfs) {
-                  console.log(`Fetching LFS objects for ${sourceRepo}...`);
-                  execSync(`cd ${tempDir} && git lfs fetch --all https://github.com/${sourceRepo}.git`, { stdio: 'inherit' });
-                }
-                
-                // Add target remote and push refs
-                execSync(`cd ${tempDir} && git remote add target ${targetRepoUrl}`);
-                execSync(`cd ${tempDir} && git push target refs/heads/*: refs/heads/* refs/tags/*:refs/tags/*`);
-                
-                // Push LFS objects only if repo uses LFS
-                if (usesLfs) {
-                  console. log(`Pushing LFS objects to ${targetRepoFullName}...`);
-                  execSync(`cd ${tempDir} && git lfs push --all ${targetRepoUrl}`, { stdio: 'inherit' });
-                }
-                
-                execSync(`rm -rf ${tempDir}`);
       
                 console.log(`Successfully mirrored ${sourceRepo} to ${targetRepoFullName}`);
               } catch (error) {
