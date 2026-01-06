@@ -73,7 +73,7 @@ jobs:
                 await github.rest. repos.get({ owner: centralAccount, repo: targetRepoName })
                   . catch(async (error) => {
                     if (error.status === 404) {
-                      console. log(`Target repository ${targetRepoFullName} does not exist, creating...`);
+                      console.log(`Target repository ${targetRepoFullName} does not exist, creating...`);
                       try {
                         await github. rest.repos.createForAuthenticatedUser({
                           name: targetRepoName,
@@ -81,7 +81,7 @@ jobs:
                           auto_init:  false
                         });
                       } catch (createError) {
-                        console. error(`Error creating repository: ${createError}`);
+                        console.error(`Error creating repository: ${createError}`);
                         throw createError;
                       }
                     } else {
@@ -138,7 +138,7 @@ jobs:
                   // Push LFS objects only if repo uses LFS
                   if (usesLfs) {
                     try {
-                      console. log(`Pushing LFS objects to ${targetRepoFullName}...`);
+                      console.log(`Pushing LFS objects to ${targetRepoFullName}...`);
                       execSync(`cd ${tempDir} && git lfs push --all ${targetRepoUrl}`, { stdio: 'inherit' });
                     } catch (lfsError) {
                       console.error(`Warning: Failed to push LFS objects: ${lfsError.message}`);
