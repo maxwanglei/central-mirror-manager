@@ -97,24 +97,24 @@ jobs:
                   execSync(`mkdir -p ${tempDir}`);
                   execSync(`git clone --mirror https://${centralAccountPat}@github.com/${sourceRepo}.git ${tempDir}`);
                   
-                  // Check if repository uses LFS by looking for . gitattributes with LFS tracking
+                  // Check if repository uses LFS by looking for .gitattributes with LFS tracking
                   let usesLfs = false;
                   try {
                     // First check if .gitattributes exists
                     execSync(
-                      `cd ${tempDir} && git cat-file -e HEAD:. gitattributes`,
+                      `cd ${tempDir} && git cat-file -e HEAD:.gitattributes`,
                       { encoding: 'utf-8', stdio: 'pipe' }
                     );
                     
                     // Then read its content and check for LFS filter
                     const gitAttrsContent = execSync(
-                      `cd ${tempDir} && git show HEAD:. gitattributes`,
+                      `cd ${tempDir} && git show HEAD:.gitattributes`,
                       { encoding: 'utf-8' }
                     );
                     
                     usesLfs = gitAttrsContent.includes('filter=lfs');
                   } catch (e) {
-                    // . gitattributes doesn't exist or can't be read
+                    // .gitattributes doesn't exist or can't be read
                     usesLfs = false;
                   }
                   
